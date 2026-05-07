@@ -42,10 +42,13 @@ class PipelineService:
         )
         db.add(job)
         db.flush()
+        # Persist the job row before long-running AI work so async failures stay visible.
+        db.commit()
+        db.refresh(job)
         
         try:
-            # === PASS 1: Structural Mapping (Sarvam Vision) ===
-            logger.info(f"Job {job.id}: Starting Pass 1 (Sarvam Vision Document Intelligence)")
+            # === PASS 1: Structural Mapping ===
+            logger.info(f"Job {job.id}: Starting Pass 1 (local structural mapping)")
             page_index = await self._run_pass1(
                 db, job, judgment, correction_notes or []
             )
@@ -123,9 +126,14 @@ class PipelineService:
             
         except Exception as e:
             logger.error(f"Job {job.id}: Pipeline failed: {e}")
+            db.rollback()
+            job = db.query(ProcessingJob).filter(ProcessingJob.id == job.id).first()
+            judgment = db.query(Judgment).filter(Judgment.id == judgment_id).first()
             job.status = "FAILED"
             job.error_message = str(e)
-            db.flush()
+            if judgment:
+                judgment.status = "FAILED"
+            db.commit()
             raise
     
     async def _run_pass1(self, db: Session, job: ProcessingJob, judgment: Judgment, correction_notes: List[str]) -> PageIndex:
@@ -408,6 +416,13 @@ class PipelineService:
         
         directives_data = extraction.get("directives", [])
         for i, d in enumerate(directives_data, 1):
+            source_page = d.get("source_page")
+            if source_page is not None:
+                try:
+                    source_page = max(1, min(int(source_page), judgment.total_pages))
+                except (TypeError, ValueError):
+                    source_page = None
+
             deadline_explicit = None
             if d.get("deadline_explicit"):
                 try:
@@ -430,7 +445,7 @@ class PipelineService:
                 responsible_dept=d.get("responsible_dept", "Other"),
                 deadline_explicit=deadline_explicit,
                 deadline_inferred=deadline_inferred,
-                source_page=d.get("source_page"),
+                source_page=source_page,
                 source_paragraph=d.get("source_paragraph"),
                 source_text=d.get("source_text"),
                 confidence_score=d.get("confidence_score"),

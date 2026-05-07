@@ -24,7 +24,6 @@ async function request<T>(
 
   if (response.status === 401) {
     localStorage.removeItem('token')
-    window.location.href = '/login'
     throw new Error('Unauthorized')
   }
 

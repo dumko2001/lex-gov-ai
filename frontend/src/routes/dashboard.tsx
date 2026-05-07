@@ -191,13 +191,23 @@ function DashboardPage() {
   const { data: liveItems, isLoading, isError } = useDashboard(department)
   const { data: summary } = useDashboardSummary(department)
 
-  const selectedReview = reviewQueue.find((item) => item.id === selectedReviewId) ?? reviewQueue[0]
-  const demoItems = trustedRecords.filter((item) => item.responsible_dept === department)
+  const filteredReviewQueue =
+    department === "All"
+      ? reviewQueue
+      : reviewQueue.filter((item) => item.department === department)
+  const selectedReview =
+    filteredReviewQueue.find((item) => item.id === selectedReviewId) ??
+    filteredReviewQueue[0] ??
+    reviewQueue[0]
+  const demoItems =
+    department === "All"
+      ? trustedRecords
+      : trustedRecords.filter((item) => item.responsible_dept === department)
   const departmentItems = liveItems?.length ? liveItems : demoItems
   const usingDemoDepartmentData = !liveItems?.length
   const reviewCounts = {
-    pending: reviewQueue.length,
-    lowConfidence: reviewQueue.filter((item) => item.confidence < 0.8).length,
+    pending: filteredReviewQueue.length,
+    lowConfidence: filteredReviewQueue.filter((item) => item.confidence < 0.8).length,
     reruns: 1,
     verifiedToday: 7,
   }
@@ -301,7 +311,7 @@ function DashboardPage() {
               <Metric icon={BadgeCheck} label="Verified today" value={reviewCounts.verifiedToday} tone="green" />
             </div>
             <div className="space-y-3 p-4">
-              {reviewQueue.map((item) => (
+              {filteredReviewQueue.map((item) => (
                 <button
                   key={item.id}
                   type="button"

@@ -159,9 +159,15 @@ function VerifyPage() {
   const handleSelectDirective = (directive: any) => {
     setSelectedDirectiveId(directive.id)
     if (directive.source_page) {
-      setPdfPage(directive.source_page)
+      setPdfPage(numPages ? Math.min(directive.source_page, numPages) : directive.source_page)
     }
   }
+
+  React.useEffect(() => {
+    if (numPages > 0 && pdfPage > numPages) {
+      setPdfPage(numPages)
+    }
+  }, [numPages, pdfPage])
 
   const handleApprove = (directiveId: string) => {
     if (!actionPlan) return

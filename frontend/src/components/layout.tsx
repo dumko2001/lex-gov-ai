@@ -2,7 +2,6 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 import { Sidebar } from "./sidebar"
 import { Header } from "./header"
-import { useAuthStore } from "@/stores/auth"
 import { useUIStore } from "@/stores/ui"
 
 interface LayoutProps {
@@ -11,13 +10,11 @@ interface LayoutProps {
 }
 
 export function Layout({ children, className }: LayoutProps) {
-  const restoreAuth = useAuthStore((s) => s.restoreAuth)
   const restoreUI = useUIStore((s) => s.restore)
 
   React.useEffect(() => {
-    restoreAuth()
     restoreUI()
-  }, [restoreAuth, restoreUI])
+  }, [restoreUI])
 
   return (
     <div className="flex h-screen w-full bg-[#f6f3ec]">

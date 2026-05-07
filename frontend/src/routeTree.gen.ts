@@ -9,7 +9,6 @@ import { Route as UploadRoute } from './routes/upload'
 import { Route as VerifyJobIdRoute } from './routes/verify.$jobId'
 import { Route as DashboardRoute } from './routes/dashboard'
 import { Route as AlertsRoute } from './routes/alerts'
-import { Route as LoginRoute } from './routes/login'
 
 const root = rootRoute.addChildren([
   IndexRoute,
@@ -17,7 +16,6 @@ const root = rootRoute.addChildren([
   VerifyJobIdRoute,
   DashboardRoute,
   AlertsRoute,
-  LoginRoute,
 ])
 
 export const routeTree = root

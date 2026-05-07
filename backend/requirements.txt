@@ -1,9 +1,6 @@
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 sqlalchemy==2.0.36
-alembic==1.14.0
-# Optional for PostgreSQL deployments; not required for SQLite demo flow.
-# Install separately if/when DATABASE_URL uses postgres.
 python-multipart==0.0.17
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4

@@ -11,7 +11,16 @@ from app.models.all import Judgment, PageIndex, ActionPlan, Directive
 
 class TestParsePageRange:
     def test_single_range(self):
-        assert pipeline_service._parse_page_range("45-52") == [45, 46, 47, 48, 49, 50, 51, 52]
+        assert pipeline_service._parse_page_range("45-52") == [
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+        ]
 
     def test_comma_separated(self):
         assert pipeline_service._parse_page_range("1,3,5") == [1, 3, 5]
@@ -34,35 +43,46 @@ class TestPipelineWithMocks:
         )
         db.query.return_value.filter.return_value.first.return_value = judgment
 
-        with patch("app.services.pipeline_service.sarvam_client") as mock_sarvam, \
-             patch("app.services.pipeline_service.pdf_service") as mock_pdf:
+        with patch("app.services.pipeline_service.sarvam_client") as mock_sarvam, patch(
+            "app.services.pipeline_service.pdf_service"
+        ) as mock_pdf:
             page_rows = [(i, "Procedural history") for i in range(1, 48)]
-            page_rows.extend([
-                (48, "Respondents are directed that compliance must be completed within 30 days."),
-                (49, "Accordingly, order is passed and respondents are directed to file their report."),
-                (50, "Disposed of. Sd/- Judge."),
-            ])
+            page_rows.extend(
+                [
+                    (
+                        48,
+                        "Respondents are directed that compliance must be completed within 30 days.",
+                    ),
+                    (
+                        49,
+                        "Accordingly, order is passed and respondents are directed to file their report.",
+                    ),
+                    (50, "Disposed of. Sd/- Judge."),
+                ]
+            )
             mock_pdf.extract_text_by_page.return_value = page_rows
 
-            mock_sarvam.extract_action_plan = AsyncMock(return_value={
-                "case_id": "CCMS/2024/001",
-                "date_of_order": "2024-01-15",
-                "parties": {"petitioner": "A", "respondent": "B"},
-                "directives": [
-                    {
-                        "action_type": "COMPLY",
-                        "responsible_dept": "Revenue",
-                        "deadline_explicit": "2024-02-15",
-                        "deadline_inferred": None,
-                        "source_page": 48,
-                        "source_paragraph": "Para 10",
-                        "source_text": "The respondent shall comply within 30 days.",
-                        "confidence_score": 0.95,
-                    }
-                ],
-                "is_complete_info_present": True,
-                "overall_confidence": 0.92,
-            })
+            mock_sarvam.extract_action_plan = AsyncMock(
+                return_value={
+                    "case_id": "CCMS/2024/001",
+                    "date_of_order": "2024-01-15",
+                    "parties": {"petitioner": "A", "respondent": "B"},
+                    "directives": [
+                        {
+                            "action_type": "COMPLY",
+                            "responsible_dept": "Revenue",
+                            "deadline_explicit": "2024-02-15",
+                            "deadline_inferred": None,
+                            "source_page": 48,
+                            "source_paragraph": "Para 10",
+                            "source_text": "The respondent shall comply within 30 days.",
+                            "confidence_score": 0.95,
+                        }
+                    ],
+                    "is_complete_info_present": True,
+                    "overall_confidence": 0.92,
+                }
+            )
 
             mock_pdf.get_page_images.return_value = [b"img1", b"img2"]
             mock_pdf.slice_pdf.return_value = "/uploads/test_sliced.pdf"
@@ -74,20 +94,26 @@ class TestPipelineWithMocks:
             assert job.iteration_count == 0
 
             # Verify PageIndex was created with correct operative range
-            page_index_calls = [c for c in db.add.call_args_list if isinstance(c.args[0], PageIndex)]
+            page_index_calls = [
+                c for c in db.add.call_args_list if isinstance(c.args[0], PageIndex)
+            ]
             assert len(page_index_calls) == 1
             page_index = page_index_calls[0].args[0]
             assert page_index.operative_pages == "48-50"
 
             # Verify ActionPlan was created
-            plan_calls = [c for c in db.add.call_args_list if isinstance(c.args[0], ActionPlan)]
+            plan_calls = [
+                c for c in db.add.call_args_list if isinstance(c.args[0], ActionPlan)
+            ]
             assert len(plan_calls) == 1
             plan = plan_calls[0].args[0]
             assert plan.case_id == "CCMS/2024/001"
             assert plan.is_complete is True
 
             # Verify Directive was created
-            directive_calls = [c for c in db.add.call_args_list if isinstance(c.args[0], Directive)]
+            directive_calls = [
+                c for c in db.add.call_args_list if isinstance(c.args[0], Directive)
+            ]
             assert len(directive_calls) == 1
             directive = directive_calls[0].args[0]
             assert directive.action_type == "COMPLY"
@@ -95,7 +121,9 @@ class TestPipelineWithMocks:
             assert directive.status == "UNVERIFIED"
             assert directive.deadline_explicit is not None
 
-            mock_pdf.slice_pdf.assert_called_once_with("/uploads/test.pdf", [48, 49, 50])
+            mock_pdf.slice_pdf.assert_called_once_with(
+                "/uploads/test.pdf", [48, 49, 50]
+            )
 
     @pytest.mark.asyncio
     async def test_self_correction_loop(self):
@@ -110,17 +138,23 @@ class TestPipelineWithMocks:
         )
         db.query.return_value.filter.return_value.first.return_value = judgment
 
-        with patch("app.services.pipeline_service.sarvam_client") as mock_sarvam, \
-             patch("app.services.pipeline_service.pdf_service") as mock_pdf:
+        with patch("app.services.pipeline_service.sarvam_client") as mock_sarvam, patch(
+            "app.services.pipeline_service.pdf_service"
+        ) as mock_pdf:
             page_rows = [(i, "Procedural history") for i in range(1, 55)]
-            page_rows.extend([
-                (55, "Respondents are directed that the action shall be completed within 30 days."),
-                (56, "Accordingly, this petition is disposed of."),
-                (57, "Sd/- Judge."),
-                (58, "Procedural text."),
-                (59, "Procedural text."),
-                (60, "Procedural text."),
-            ])
+            page_rows.extend(
+                [
+                    (
+                        55,
+                        "Respondents are directed that the action shall be completed within 30 days.",
+                    ),
+                    (56, "Accordingly, this petition is disposed of."),
+                    (57, "Sd/- Judge."),
+                    (58, "Procedural text."),
+                    (59, "Procedural text."),
+                    (60, "Procedural text."),
+                ]
+            )
             mock_pdf.extract_text_by_page.return_value = page_rows
 
             first_extraction = {
@@ -161,7 +195,9 @@ class TestPipelineWithMocks:
                 "is_complete_info_present": True,
                 "overall_confidence": 0.92,
             }
-            mock_sarvam.extract_action_plan = AsyncMock(side_effect=[first_extraction, second_extraction])
+            mock_sarvam.extract_action_plan = AsyncMock(
+                side_effect=[first_extraction, second_extraction]
+            )
 
             mock_pdf.get_page_images.return_value = [b"img"]
             mock_pdf.slice_pdf.return_value = "/uploads/test2_sliced.pdf"
@@ -190,6 +226,7 @@ class TestPDFSlicing:
         assert sliced_path.endswith("_sliced.pdf")
 
         from pypdf import PdfReader
+
         reader = PdfReader(sliced_path)
         assert len(reader.pages) == 2
 
@@ -220,6 +257,7 @@ class TestAlertEngine:
         directive2.status = "UNVERIFIED"
 
         db.query.return_value.filter.return_value.first.return_value = judgment
+
         # We need to handle two different filter chains; using side_effect
         def query_side_effect(model):
             m = MagicMock()
@@ -284,7 +322,9 @@ class TestVerificationActions:
         db.query.return_value.filter.return_value.first.return_value = directive
 
         request = VerificationActionRequest(action_type="APPROVE")
-        response = verify_directive(str(directive.action_plan_id), str(directive.id), request, db)
+        response = verify_directive(
+            str(directive.action_plan_id), str(directive.id), request, db
+        )
 
         assert response.action_type == "APPROVE"
         assert directive.status == "VERIFIED"
@@ -312,9 +352,14 @@ class TestVerificationActions:
 
         request = VerificationActionRequest(
             action_type="EDIT",
-            edited_value={"responsible_dept": "Home", "deadline_explicit": "2024-12-31"}
+            edited_value={
+                "responsible_dept": "Home",
+                "deadline_explicit": "2024-12-31",
+            },
         )
-        response = verify_directive(str(directive.action_plan_id), str(directive.id), request, db)
+        response = verify_directive(
+            str(directive.action_plan_id), str(directive.id), request, db
+        )
 
         assert response.action_type == "EDIT"
         assert directive.responsible_dept == "Home"
@@ -342,10 +387,11 @@ class TestVerificationActions:
         db.query.return_value.filter.return_value.first.return_value = directive
 
         request = VerificationActionRequest(
-            action_type="REDO",
-            correction_note="Missed conditional directive"
+            action_type="REDO", correction_note="Missed conditional directive"
         )
-        response = verify_directive(str(directive.action_plan_id), str(directive.id), request, db)
+        response = verify_directive(
+            str(directive.action_plan_id), str(directive.id), request, db
+        )
 
         assert response.action_type == "REDO"
         assert response.triggered_rerun is True

@@ -1,26 +1,46 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, DateTime, Boolean, Text, ForeignKey, DECIMAL, JSON
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    DateTime,
+    Boolean,
+    Text,
+    ForeignKey,
+    DECIMAL,
+    JSON,
+)
 from app.core.database import Base
+
 
 class Judgment(Base):
     __tablename__ = "judgments"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     ccms_case_id = Column(String(50), nullable=False)
     file_name = Column(String(255), nullable=False)
     file_path = Column(String(500), nullable=False)
     file_size_bytes = Column(Integer)
     total_pages = Column(Integer, nullable=False)
-    upload_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    upload_date = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     status = Column(String(20), default="PENDING")
     uploaded_by = Column(String(36), ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
 
 class ProcessingJob(Base):
     __tablename__ = "processing_jobs"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     judgment_id = Column(String(36), ForeignKey("judgments.id"), nullable=False)
     status = Column(String(30), default="PENDING")
@@ -32,13 +52,20 @@ class ProcessingJob(Base):
     pass2_raw_response = Column(Text)
     sliced_text = Column(Text)
     error_message = Column(Text)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
     completed_at = Column(DateTime(timezone=True), nullable=True)
+
 
 class PageIndex(Base):
     __tablename__ = "page_indices"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     job_id = Column(String(36), ForeignKey("processing_jobs.id"), nullable=False)
     judgment_id = Column(String(36), ForeignKey("judgments.id"), nullable=False)
@@ -47,11 +74,14 @@ class PageIndex(Base):
     breadcrumb_pages = Column(JSON)
     page_index_json = Column(JSON, nullable=False)
     correction_notes = Column(JSON)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
 
 class ActionPlan(Base):
     __tablename__ = "action_plans"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     job_id = Column(String(36), ForeignKey("processing_jobs.id"), nullable=False)
     judgment_id = Column(String(36), ForeignKey("judgments.id"), nullable=False)
@@ -63,12 +93,19 @@ class ActionPlan(Base):
     raw_extraction_json = Column(JSON, nullable=False)
     sliced_text = Column(Text)
     status = Column(String(20), default="PENDING")
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
 
 class Directive(Base):
     __tablename__ = "directives"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     action_plan_id = Column(String(36), ForeignKey("action_plans.id"), nullable=False)
     judgment_id = Column(String(36), ForeignKey("judgments.id"), nullable=False)
@@ -85,11 +122,14 @@ class Directive(Base):
     status = Column(String(20), default="UNVERIFIED")
     verified_by = Column(String(36), ForeignKey("users.id"), nullable=True)
     verified_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String(255), unique=True, nullable=False)
     full_name = Column(String(255), nullable=False)
@@ -98,11 +138,14 @@ class User(Base):
     role = Column(String(20), nullable=False)
     hashed_password = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
 
 class VerificationAction(Base):
     __tablename__ = "verification_actions"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     directive_id = Column(String(36), ForeignKey("directives.id"), nullable=False)
     action_plan_id = Column(String(36), ForeignKey("action_plans.id"), nullable=False)
@@ -113,11 +156,14 @@ class VerificationAction(Base):
     correction_note = Column(Text)
     triggered_rerun = Column(Boolean, default=False)
     new_job_id = Column(String(36), ForeignKey("processing_jobs.id"), nullable=True)
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
 
 class AuditLog(Base):
     __tablename__ = "audit_log"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     entity_type = Column(String(30), nullable=False)
     entity_id = Column(String(36), nullable=False)
@@ -126,11 +172,14 @@ class AuditLog(Base):
     old_state = Column(JSON)
     new_state = Column(JSON)
     extra_metadata = Column(JSON)
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
 
 class Alert(Base):
     __tablename__ = "alerts"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     judgment_id = Column(String(36), ForeignKey("judgments.id"), nullable=False)
     directive_id = Column(String(36), ForeignKey("directives.id"), nullable=True)
@@ -140,15 +189,20 @@ class Alert(Base):
     recipient_officer_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     message = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
 
 class FeedbackContext(Base):
     __tablename__ = "feedback_contexts"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     job_id = Column(String(36), ForeignKey("processing_jobs.id"), nullable=False)
     iteration = Column(Integer, nullable=False)
     context_type = Column(String(20), nullable=False)
     feedback_note = Column(Text, nullable=False)
     appended_to_pass1 = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )

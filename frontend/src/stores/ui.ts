@@ -1,6 +1,7 @@
 import { create } from "zustand"
 
 const DEPARTMENTS = [
+  "All",
   "Revenue",
   "Home",
   "Law",
@@ -23,16 +24,10 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  department: "Revenue",
+  department: "All",
   departments: DEPARTMENTS,
   setDepartment: (department) => {
-    localStorage.setItem("department", department)
     set({ department })
   },
-  restore: () => {
-    const saved = localStorage.getItem("department")
-    if (saved && DEPARTMENTS.includes(saved as Department)) {
-      set({ department: saved as Department })
-    }
-  },
+  restore: () => set({ department: "All" }),
 }))

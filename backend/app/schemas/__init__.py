@@ -3,6 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 from uuid import UUID
 
+
 # ─── User Schemas ───
 class UserBase(BaseModel):
     email: str
@@ -11,8 +12,10 @@ class UserBase(BaseModel):
     department: str
     role: str = Field(..., pattern="^(NODAL_OFFICER|DEPT_HEAD|LAW_DEPT|ADMIN)$")
 
+
 class UserCreate(UserBase):
     password: Optional[str] = None
+
 
 class UserResponse(UserBase):
     id: UUID
@@ -22,14 +25,17 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
+
 # ─── Judgment Schemas ───
 class JudgmentBase(BaseModel):
     ccms_case_id: str
     file_name: str
     total_pages: int
 
+
 class JudgmentCreate(JudgmentBase):
     pass
+
 
 class JudgmentResponse(JudgmentBase):
     id: UUID
@@ -43,6 +49,7 @@ class JudgmentResponse(JudgmentBase):
     class Config:
         from_attributes = True
 
+
 class JudgmentListResponse(BaseModel):
     id: UUID
     ccms_case_id: str
@@ -52,6 +59,7 @@ class JudgmentListResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 # ─── Processing Job Schemas ───
 class ProcessingJobResponse(BaseModel):
@@ -68,12 +76,14 @@ class ProcessingJobResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class JobStatusResponse(BaseModel):
     job_id: UUID
     judgment_id: UUID
     status: str
     iteration_count: int
     progress: str
+
 
 # ─── Page Index Schemas ───
 class PageIndexResponse(BaseModel):
@@ -88,6 +98,7 @@ class PageIndexResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 # ─── Directive Schemas ───
 class DirectiveBase(BaseModel):
     directive_number: int
@@ -100,10 +111,12 @@ class DirectiveBase(BaseModel):
     source_text: Optional[str]
     confidence_score: Optional[float]
 
+
 class DirectiveCreate(DirectiveBase):
     action_plan_id: UUID
     judgment_id: UUID
     extracted_json: dict
+
 
 class DirectiveResponse(DirectiveBase):
     id: UUID
@@ -117,6 +130,7 @@ class DirectiveResponse(DirectiveBase):
     class Config:
         from_attributes = True
 
+
 class DirectiveEditRequest(BaseModel):
     action_type: Optional[str] = None
     responsible_dept: Optional[str] = None
@@ -124,8 +138,10 @@ class DirectiveEditRequest(BaseModel):
     deadline_inferred: Optional[datetime] = None
     edit_reason: str
 
+
 class DirectiveRedoRequest(BaseModel):
     correction_note: str
+
 
 # ─── Action Plan Schemas ───
 class ActionPlanResponse(BaseModel):
@@ -144,11 +160,13 @@ class ActionPlanResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 # ─── Verification Schemas ───
 class VerificationActionRequest(BaseModel):
     action_type: str = Field(..., pattern="^(APPROVE|EDIT|REDO)$")
     edited_value: Optional[dict] = None
     correction_note: Optional[str] = None
+
 
 class VerificationActionResponse(BaseModel):
     id: UUID
@@ -164,12 +182,14 @@ class VerificationActionResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 # ─── Dashboard Schemas ───
 class DashboardSummary(BaseModel):
     total: int
     urgent: int
     upcoming: int
     actioned: int
+
 
 class DashboardDirective(BaseModel):
     id: UUID
@@ -187,9 +207,11 @@ class DashboardDirective(BaseModel):
     class Config:
         from_attributes = True
 
+
 class DashboardResponse(BaseModel):
     summary: DashboardSummary
     directives: List[DashboardDirective]
+
 
 # ─── Alert Schemas ───
 class AlertResponse(BaseModel):
@@ -206,18 +228,22 @@ class AlertResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class AlertMarkReadRequest(BaseModel):
     alert_ids: List[UUID]
+
 
 # ─── Auth Schemas ───
 class LoginRequest(BaseModel):
     email: str
     password: str
 
+
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
 
 # ─── Pipeline Trigger ───
 class PipelineTriggerResponse(BaseModel):

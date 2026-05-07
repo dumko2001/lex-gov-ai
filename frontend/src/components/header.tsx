@@ -1,12 +1,10 @@
 import { Link } from "@tanstack/react-router"
-import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useUIStore } from "@/stores/ui"
-import { LogOut, User, Bell } from "lucide-react"
+import { Bell } from "lucide-react"
 
 export function Header() {
-  const { user, logout, isAuthenticated } = useAuth()
   const department = useUIStore((s) => s.department)
   const departments = useUIStore((s) => s.departments)
   const setDepartment = useUIStore((s) => s.setDepartment)
@@ -49,26 +47,9 @@ export function Header() {
           </Button>
         </Link>
 
-        {isAuthenticated && user ? (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
-                <User className="h-4 w-4 text-stone-900" />
-              </div>
-              <div className="hidden md:block">
-                <p className="text-sm font-medium text-stone-900">{user.name}</p>
-                <p className="text-xs text-stone-500">Nodal officer / {department}</p>
-              </div>
-            </div>
-            <Button variant="ghost" size="icon" onClick={logout}>
-              <LogOut className="h-4 w-4 text-stone-600" />
-            </Button>
-          </div>
-        ) : (
-          <Link to="/login">
-            <Button variant="outline" size="sm">Sign In</Button>
-          </Link>
-        )}
+        <div className="hidden rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-stone-700 md:block">
+          Demo workspace
+        </div>
       </div>
     </header>
   )

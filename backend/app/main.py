@@ -28,6 +28,7 @@ app.include_router(jobs.router)
 app.include_router(action_plans.router)
 app.include_router(dashboard.router)
 
+
 @app.get("/health", tags=["health"])
 def health_check():
     return {"status": "ok", "service": "lex-gov-ai-backend"}

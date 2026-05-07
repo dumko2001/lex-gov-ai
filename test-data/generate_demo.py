@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate synthetic judgment PDFs for pipeline testing.
+Generate small demo judgment PDFs for pipeline testing.
 Requires: reportlab
 """
 import os

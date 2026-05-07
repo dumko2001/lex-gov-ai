@@ -3,7 +3,7 @@
 > **PAN IIT Bangalore × Government of Karnataka Hackathon — Theme 11**  
 > *From Court Judgments to Verified Action Plans*
 
-An AI system that reads Karnataka High Court judgment PDFs, extracts structured action plans using a two-pass Sarvam AI pipeline, routes directives to responsible departments through mandatory human verification, and presents a deadline-tracked dashboard to government officers.
+An AI system that reads Karnataka High Court judgment PDFs, identifies operative pages, extracts structured action plans with Sarvam AI, routes directives to responsible departments through mandatory human verification, and presents a deadline-tracked dashboard to government officers.
 
 ---
 
@@ -78,7 +78,6 @@ cp .env.example .env
 | Python | 3.10+ | 3.12 preferred |
 | Node.js | 18+ | npm included |
 | Sarvam AI key | — | Free at [dashboard.sarvam.ai](https://dashboard.sarvam.ai) — ₹1,000 credits |
-| Docker | Optional | For PostgreSQL deployment |
 
 ### Getting a Sarvam API Key
 
@@ -88,7 +87,7 @@ cp .env.example .env
 4. Copy your API key
 5. Set it in `.env`: `SARVAM_API_KEY=your-key-here`
 
-**Estimated cost per judgment:** ₹15–30 (Vision document intelligence + 105B extraction)
+**Estimated cost per judgment:** depends on PDF length and Sarvam usage.
 
 ---
 
@@ -151,22 +150,13 @@ npm install
 npm run dev
 ```
 
-### Option C: Docker (with PostgreSQL)
-
-```bash
-cp .env.example .env    # set SARVAM_API_KEY
-docker-compose up --build
-```
-
----
-
 ## Architecture
 
 ```
 ┌──────────────┐    ┌───────────────────────────────┐    ┌──────────────┐
-│  PDF Upload  │───▶│  Pass 1: Sarvam Vision (3B)   │───▶│  PDF Slicer  │
-│  (CCMS API   │    │  OCR + Structural Mapping     │    │  (10–15 pp   │
-│  in prod)    │    │  → Page Index [1-5, 47-53]    │    │  from 90 pp) │
+│  PDF Upload  │───▶│  Pass 1: Structural Mapping   │───▶│  PDF Slicer  │
+│  (manual in  │    │  pdfplumber + legal heuristics│    │  operative   │
+│  demo)       │    │  → Page Index [1-5, 47-53]    │    │  pages only  │
 └──────────────┘    └───────────────────────────────┘    └──────┬───────┘
                                                                  │
                                                                  ▼
@@ -201,8 +191,8 @@ docker-compose up --build
                     └───────────────────────────────────────────────────────┘
 ```
 
-### Pass 1 — Sarvam Vision 3B (Structural Mapping)
-Handles scanned pages, Kannada/Indic text, and court stamps. Outputs a **Page Index** (e.g., `[1-5, 47-53]`) identifying the preamble and operative order. Does not interpret meaning.
+### Pass 1 — Structural Mapping
+Extracts page text with `pdfplumber`, scores pages for legal operative signals, and outputs a **Page Index** (e.g., `[1-5, 47-53]`) identifying the preamble and operative order. Does not interpret meaning.
 
 ### PDF Slicer
 Builds a temporary PDF from the Page Index. A 90-page judgment becomes a 10–15 page slice, removing procedural noise before Pass 2.
@@ -246,7 +236,6 @@ lex-gov-ai/
 │   │   ├── models/           # SQLAlchemy models (10 tables)
 │   │   ├── schemas/          # Pydantic request/response schemas
 │   │   └── services/         # AI pipeline, PDF slicer, alert engine
-│   ├── alembic/              # DB migrations
 │   ├── scripts/              # Utility scripts
 │   ├── tests/                # Test harness
 │   └── requirements.txt
@@ -258,9 +247,8 @@ lex-gov-ai/
 │   │   └── stores/           # Auth state (Zustand)
 │   └── package.json
 ├── test-data/
-│   └── judgments/            # 4 synthetic Karnataka HC judgment PDFs
+│   └── judgments/            # Real/sample judgment PDFs for demo testing
 ├── lex-gov-ai-verified-action-pipeline.pptx   # Presentation
-├── docker-compose.yml        # Optional PostgreSQL deployment
 ├── start.sh                  # One-command startup script
 ├── external_env.sh           # Routes caches to external drive (optional)
 ├── .env.example              # Copy to .env and set SARVAM_API_KEY
@@ -279,11 +267,11 @@ lex-gov-ai/
 | Routing | TanStack Router | Type-safe routing |
 | PDF viewer | react-pdf | Page navigation, text extraction |
 | Backend | FastAPI + Python 3.12 | Async, auto-docs |
-| Database | SQLite (default) / PostgreSQL | Zero setup for demo |
-| AI Pass 1 | Sarvam Vision (3B) | Document intelligence, OCR, 22 Indian languages |
+| Database | SQLite | Zero setup for demo |
+| AI Pass 1 | pdfplumber + legal heuristics | Fast local operative-page detection |
 | AI Pass 2 | Sarvam-105B | Indian legal language, 128K context, conditional directives |
 | Auth | JWT (python-jose) | Stateless, role-based |
-| Deployment | Docker Compose | One-command start |
+| Deployment | `start.sh` | One-command local demo |
 
 ---
 
@@ -320,20 +308,20 @@ Tests cover: PDF page-range parsing, pipeline state machine, self-correction loo
 
 | Dimension | Generic LLM (GPT-4, Claude) | Sarvam AI |
 |-----------|-----------------------------|-----------|
-| PDF handling | Fails on scanned / Kannada pages | Vision model handles scanned, stamped, mixed-script |
+| Legal extraction | General legal English | 105B model for Indian legal-language extraction |
 | Legal language | General English | 105B trained on Indian legal text across 22 languages |
 | Data sovereignty | Foreign API (US-hosted) | Indian company; on-premise deployment at SDC |
 | Cost | $5–10 per 100-page doc | ₹15–30 per judgment |
 | Failure mode | Silent hallucination | Self-correction loop + mandatory human sign-off |
 
-> **For production:** Both models deploy on-premise at the Karnataka State Data Centre via vLLM. Pipeline code is identical — only the API endpoint changes.
+> **For production:** the Sarvam endpoint can be replaced with an approved internal endpoint. For this hackathon demo, SQLite and local uploaded PDFs are enough.
 
 ---
 
-## Deployment Notes (Production Path)
+## Deployment Notes (Future Path)
 
-- **On-premise SDC:** Replace `SARVAM_API_KEY` endpoint with internal vLLM instance. No code changes.
-- **Database:** Change `DATABASE_URL` in `.env` to PostgreSQL. Alembic migrations are ready (`alembic upgrade head`).
+- **On-premise SDC:** Replace the public Sarvam endpoint with an approved internal AI endpoint.
+- **Database:** Current demo uses SQLite. A production database can be added later after the prototype is accepted.
 - **File storage:** Replace local `uploads/` path with S3-compatible object store.
 - **Auth:** Add Karnataka government SSO (SAML/OAuth) in front of the JWT layer.
 - **CCMS integration:** Replace the upload endpoint with the CCMS API webhook handler.
@@ -344,13 +332,13 @@ Tests cover: PDF page-range parsing, pipeline state machine, self-correction loo
 
 | Current Prototype | Production Path |
 |-------------------|-----------------|
-| SQLite database | PostgreSQL at SDC |
+| SQLite database | Managed production database after approval |
 | Local file storage | S3-compatible object storage |
 | Basic JWT auth | Government SSO integration |
 | Page-level PDF jump | Paragraph-level highlight |
 | Rule-based alerts | SMS/email gateway (NIC) |
 | Manual PDF upload | CCMS API auto-fetch |
-| 4 synthetic PDFs | Full CIS/CCMS integration |
+| Included real/sample PDFs | Full CIS/CCMS integration |
 
 ---
 

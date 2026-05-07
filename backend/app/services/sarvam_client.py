@@ -9,6 +9,7 @@ from app.core.config import get_settings
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
+
 class SarvamClient:
     def __init__(self):
         self.api_key = settings.SARVAM_API_KEY
@@ -16,9 +17,9 @@ class SarvamClient:
         self.model = settings.SARVAM_MODEL_PASS2
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
-    
+
     async def extract_action_plan(self, text: str, page_range: str) -> Dict[str, Any]:
         """
         Send sliced judgment text to Sarvam-105B for structured extraction.
@@ -26,7 +27,7 @@ class SarvamClient:
         """
         if not self.api_key:
             raise ValueError("SARVAM_API_KEY not configured")
-        
+
         prompt = f"""You are an expert legal assistant specializing in Karnataka High Court judgments.
 
 TASK: Extract a structured action plan from the operative portion of a court judgment.
@@ -72,7 +73,7 @@ RULES:
 6. COMPLETENESS: If you suspect any directive was missed, set is_complete_info_present=false.
 
 Output ONLY the JSON. No markdown code blocks, no explanations."""
-        
+
         last_error = None
         for attempt in range(1, 4):
             # Relax response format on retries in case the provider returns blank
@@ -80,8 +81,11 @@ Output ONLY the JSON. No markdown code blocks, no explanations."""
             payload = {
                 "model": self.model,
                 "messages": [
-                    {"role": "system", "content": "You are a senior legal assistant for Karnataka government."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "You are a senior legal assistant for Karnataka government.",
+                    },
+                    {"role": "user", "content": prompt},
                 ],
                 "temperature": 0.1 if attempt > 1 else 0.2,
                 "max_tokens": 4000,
@@ -95,7 +99,7 @@ Output ONLY the JSON. No markdown code blocks, no explanations."""
                         f"{self.base_url}/v1/chat/completions",
                         headers=self.headers,
                         json=payload,
-                        timeout=120.0
+                        timeout=120.0,
                     )
                     response.raise_for_status()
                     data = response.json()
@@ -104,7 +108,9 @@ Output ONLY the JSON. No markdown code blocks, no explanations."""
                 if not raw_content or not str(raw_content).strip():
                     raise ValueError("Sarvam returned empty content")
 
-                logger.info(f"Pass 2 raw response (attempt {attempt}): {raw_content[:500]}")
+                logger.info(
+                    f"Pass 2 raw response (attempt {attempt}): {raw_content[:500]}"
+                )
                 return self._parse_json_content(raw_content)
             except Exception as exc:
                 last_error = exc
@@ -127,7 +133,9 @@ Output ONLY the JSON. No markdown code blocks, no explanations."""
             pass
 
         # Strip fenced code blocks if present.
-        fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, re.DOTALL | re.IGNORECASE)
+        fenced = re.search(
+            r"```(?:json)?\s*(\{.*\})\s*```", text, re.DOTALL | re.IGNORECASE
+        )
         if fenced:
             return json.loads(fenced.group(1))
 
@@ -138,5 +146,6 @@ Output ONLY the JSON. No markdown code blocks, no explanations."""
             return json.loads(text[start : end + 1])
 
         raise ValueError("Unable to parse JSON from Sarvam response")
+
 
 sarvam_client = SarvamClient()
