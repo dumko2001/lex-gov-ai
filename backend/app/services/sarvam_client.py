@@ -75,7 +75,7 @@ RULES:
 Output ONLY the JSON. No markdown code blocks, no explanations."""
 
         last_error = None
-        for attempt in range(1, 4):
+        for attempt in range(1, 2):
             # Relax response format on retries in case the provider returns blank
             # content for strict json_object mode.
             payload = {
@@ -99,7 +99,7 @@ Output ONLY the JSON. No markdown code blocks, no explanations."""
                         f"{self.base_url}/v1/chat/completions",
                         headers=self.headers,
                         json=payload,
-                        timeout=120.0,
+                        timeout=45.0,
                     )
                     response.raise_for_status()
                     data = response.json()
