@@ -1,0 +1,41 @@
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv/
+venv/
+venv.empty/
+ENV/
+
+# ─── Database files ───────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── Uploads (runtime; not source-controlled) ────────────────────────────────
+backend/uploads/
+
+# ─── External drive caches / temp dirs ───────────────────────────────────────
+.external-cache/
+.external-tmp/
+
+# ─── Node ─────────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+*.log
+
+# ─── Test caches ──────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ─── IDE ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
