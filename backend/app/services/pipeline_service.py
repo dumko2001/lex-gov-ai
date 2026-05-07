@@ -387,7 +387,13 @@ class PipelineService:
         """Run Pass 2: Extract structured action plan using Sarvam-105B."""
         
         text_to_send = sliced_text[:30000]
-        extraction = await sarvam_client.extract_action_plan(text_to_send, page_range)
+        try:
+            extraction = await sarvam_client.extract_action_plan(text_to_send, page_range)
+        except Exception as exc:
+            logger.warning("Pass 2 Sarvam extraction failed; using local fallback: %s", exc)
+            extraction = self._fallback_extract_action_plan(
+                text_to_send, page_range, str(exc)
+            )
         
         job.pass2_raw_response = json.dumps(extraction)
         db.flush()
@@ -456,6 +462,156 @@ class PipelineService:
         
         db.flush()
         return action_plan
+
+    def _fallback_extract_action_plan(
+        self, text: str, page_range: str, error_message: str
+    ) -> Dict[str, Any]:
+        """Create a reviewable low-confidence plan from real PDF text."""
+        order_date = self._extract_order_date(text)
+        returnable_date = self._extract_returnable_date(text)
+        page_numbers = self._parse_page_range(page_range) if page_range else [1]
+        default_page = page_numbers[0] if page_numbers else 1
+
+        directives: List[Dict[str, Any]] = []
+
+        detail_match = re.search(
+            r"the respondents are directed to\s+furnish.*?following\s+details.*?(?=The Registrar General|When dictation|$)",
+            text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if detail_match:
+            block = re.sub(r"\s+", " ", detail_match.group(0)).strip()
+            for label, dept, phrase in [
+                ("preventive and remedial measures", "Health", "preventive and remedial measures"),
+                ("medical facilities", "Health", "medical facilities"),
+                ("availability of infrastructure", "Health", "availability of infrastructure"),
+                ("public awareness", "Health", "creating public awareness"),
+                ("mosquito breeding", "Urban Development", "control the mosquito breeding"),
+            ]:
+                item = self._extract_sentence_containing(block, phrase) or block[:700]
+                directives.append(
+                    self._fallback_directive(
+                        action_type="COMPLY",
+                        responsible_dept=dept,
+                        deadline=returnable_date,
+                        source_page=default_page,
+                        source_paragraph=label,
+                        source_text=item,
+                        confidence=0.58,
+                    )
+                )
+
+        registrar = self._extract_sentence_containing(
+            text, "Registrar General is directed"
+        )
+        if registrar:
+            directives.append(
+                self._fallback_directive(
+                    action_type="COMPLY",
+                    responsible_dept="Other",
+                    deadline=order_date,
+                    source_page=page_numbers[-1] if page_numbers else default_page,
+                    source_paragraph="registrar procedural direction",
+                    source_text=registrar,
+                    confidence=0.55,
+                )
+            )
+
+        reply = self._extract_sentence_containing(
+            text, "respondents shall file their replies"
+        )
+        if reply:
+            directives.append(
+                self._fallback_directive(
+                    action_type="COMPLY",
+                    responsible_dept="Law",
+                    deadline=returnable_date,
+                    source_page=page_numbers[-1] if page_numbers else default_page,
+                    source_paragraph="reply filing direction",
+                    source_text=reply,
+                    confidence=0.57,
+                )
+            )
+
+        if not directives:
+            generic = self._extract_sentence_containing(text, "directed") or text[:700]
+            directives.append(
+                self._fallback_directive(
+                    action_type="COMPLY",
+                    responsible_dept="Other",
+                    deadline=returnable_date,
+                    source_page=default_page,
+                    source_paragraph="fallback directive",
+                    source_text=generic,
+                    confidence=0.45,
+                )
+            )
+
+        return {
+            "case_id": None,
+            "date_of_order": order_date,
+            "parties": {"petitioner": None, "respondent": None},
+            "directives": directives,
+            "is_complete_info_present": False,
+            "overall_confidence": 0.55,
+            "completeness_assessment": (
+                "Sarvam extraction failed, so this low-confidence draft was built "
+                f"from the real PDF text for nodal officer review. Error: {error_message}"
+            ),
+        }
+
+    def _fallback_directive(
+        self,
+        action_type: str,
+        responsible_dept: str,
+        deadline: Optional[str],
+        source_page: int,
+        source_paragraph: str,
+        source_text: str,
+        confidence: float,
+    ) -> Dict[str, Any]:
+        return {
+            "action_type": action_type,
+            "responsible_dept": responsible_dept,
+            "deadline_explicit": deadline,
+            "deadline_inferred": deadline,
+            "source_page": source_page,
+            "source_paragraph": source_paragraph,
+            "source_text": re.sub(r"\s+", " ", source_text).strip(),
+            "confidence_score": confidence,
+        }
+
+    def _extract_order_date(self, text: str) -> Optional[str]:
+        match = re.search(r"Date:\s*(\d{1,2})[./-](\d{1,2})[./-](\d{4})", text, re.IGNORECASE)
+        if not match:
+            return None
+        day, month, year = match.groups()
+        return f"{year}-{int(month):02d}-{int(day):02d}"
+
+    def _extract_returnable_date(self, text: str) -> Optional[str]:
+        match = re.search(
+            r"returnable on\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})",
+            text,
+            re.IGNORECASE,
+        )
+        if not match:
+            return None
+        day, month_name, year = match.groups()
+        months = {
+            "january": 1, "february": 2, "march": 3, "april": 4,
+            "may": 5, "june": 6, "july": 7, "august": 8,
+            "september": 9, "october": 10, "november": 11, "december": 12,
+        }
+        month = months.get(month_name.lower())
+        if not month:
+            return None
+        return f"{year}-{month:02d}-{int(day):02d}"
+
+    def _extract_sentence_containing(self, text: str, phrase: str) -> Optional[str]:
+        normalized = re.sub(r"\s+", " ", text)
+        pattern = rf"([^.;]*{re.escape(phrase)}[^.;]*(?:[.;]|$))"
+        match = re.search(pattern, normalized, re.IGNORECASE)
+        return match.group(1).strip() if match else None
     
     def _parse_page_range(self, range_str: str) -> List[int]:
         """Parse '45-52' or '45,46,47-50' into [45, 46, 47, 48, 49, 50]."""
